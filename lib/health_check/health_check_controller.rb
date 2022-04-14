@@ -30,12 +30,12 @@ module HealthCheck
           if HealthCheck.success_callbacks
             HealthCheck.success_callbacks.each do |callback|
               callback.call(checks)
-            end 
+            end
           end
         else
           msg = HealthCheck.include_error_in_response_body ? "#{HealthCheck.failure}: #{errors}" : nil
           send_response false, msg, HealthCheck.http_status_for_error_text, HealthCheck.http_status_for_error_object
-          
+
           # Log a single line as some uptime checkers only record that it failed, not the text returned
           msg = "#{HealthCheck.failure}: #{errors}"
           logger.send(HealthCheck.log_level, msg) if logger && HealthCheck.log_level
@@ -70,13 +70,26 @@ module HealthCheck
 
     def check_origin_ip
       request_ipaddr = IPAddr.new(HealthCheck.accept_proxied_requests ? request.remote_ip : request.ip)
+      Rails.logger.warn "HealthCheck.accept_proxied_requests: #{HealthCheck.accept_proxied_requests}"
+      Rails.logger.warn "request.remote_ip: #{request.remote_ip}"
+      Rails.logger.warn "request.ip: #{request.ip}"
+      Rails.logger.warn "HealthCheck.accept_proxied_requests ? request.remote_ip : request.ip: #{HealthCheck.accept_proxied_requests ? request.remote_ip : request.ip}"
+      Rails.logger.warn "request_ipaddr"
+      Rails.logger.warn request_ipaddr.inspect
+
+      Rails.logger.warn "HealthCheck.origin_ip_whitelist.blank? #{HealthCheck.origin_ip_whitelist.blank?}"
+      Rails.logger.warn "HealthCheck.origin_ip_whitelist.inspect #{HealthCheck.origin_ip_whitelist.inspect}"
+      Rails.logger.warn "HealthCheck.origin_ip_whitelist.any? { |addr| IPAddr.new(addr).include? request_ipaddr } #{HealthCheck.origin_ip_whitelist.any? { |addr| IPAddr.new(addr).include? request_ipaddr }}"
+
       unless HealthCheck.origin_ip_whitelist.blank? ||
           HealthCheck.origin_ip_whitelist.any? { |addr| IPAddr.new(addr).include? request_ipaddr }
+        Rails.logger.warn "======================================================================"
         render plain: 'Health check is not allowed for the requesting IP',
                status: HealthCheck.http_status_for_ip_whitelist_error,
                content_type: 'text/plain'
       end
     end
+
 
     # turn cookies for CSRF off
     def protect_against_forgery?
